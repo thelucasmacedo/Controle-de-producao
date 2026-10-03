@@ -38,7 +38,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
   <div class="grid">
     <div class="card stat"><span>Paletes</span><strong id="count">0</strong><span id="metaText">de 75</span></div>
-    <div class="card stat"><span>Ritmo atual</span><strong id="rate">0,0</strong><span>paletes/h</span></div>
+    <div class="card stat"><span>Total de blocos produzidos</span><strong id="totalBlocks">0</strong><span id="blocksUnit">blocos</span></div>
     <div class="card stat"><span>Tempo parado</span><strong id="downtime">00:00</strong><span>neste turno</span></div>
     <div class="card stat"><span>Média</span><strong id="avg">--</strong><span>por palete</span></div>
   </div>
@@ -121,6 +121,7 @@ const KEY="producaoCeramicaV1";
 let d=JSON.parse(localStorage.getItem(KEY)||"null");
 if(!d)d={produto:"Bloquinho 9×19×19",meta:75,inicio:Date.now(),paletes:[],paradas:[],ativa:null};
 let produto=document.getElementById("produto"),meta=document.getElementById("meta");
+const blocosPorPalete={"Bloquinho 9×19×19":390,"Blocão 9×19×29":234};
 produto.value=d.produto;meta.value=d.meta;
 produto.onchange=()=>{d.produto=produto.value;save();render()};
 meta.onchange=()=>{d.meta=Math.max(1,+meta.value||1);save();render()};
@@ -146,8 +147,13 @@ function render(){
  let now=Date.now(), totalDown=d.paradas.reduce((a,p)=>a+p.dur,0)+(d.ativa?now-d.ativa.start:0);
  document.getElementById("count").textContent=d.paletes.length;
  document.getElementById("metaText").textContent="de "+d.meta;
- let elapsed=Math.max(1,now-d.inicio-totalDown),rate=d.paletes.length/(elapsed/3600000);
- document.getElementById("rate").textContent=rate.toLocaleString("pt-BR",{maximumFractionDigits:1});
+ let blocosPorPaleteAtual=blocosPorPalete[d.produto];
+ document.getElementById("totalBlocks").textContent=blocosPorPaleteAtual
+  ?(d.paletes.length*blocosPorPaleteAtual).toLocaleString("pt-BR")
+  :"—";
+ document.getElementById("blocksUnit").textContent=blocosPorPaleteAtual
+  ?"blocos produzidos"
+  :"sem conversão cadastrada para este produto";
  document.getElementById("downtime").textContent=fmtTime(totalDown);
  let avg=d.paletes.length>1?(d.paletes.at(-1).t-d.paletes[0].t)/(d.paletes.length-1):null;
  document.getElementById("avg").textContent=avg?fmtTime(avg):"--";
