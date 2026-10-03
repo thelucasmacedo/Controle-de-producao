@@ -1,5 +1,5 @@
 entrypoint = "index.html"
-modules = ["web"]
+modules = ["web", "python-base-3.13"]
 
 [nix]
 channel = "stable-24_11"
