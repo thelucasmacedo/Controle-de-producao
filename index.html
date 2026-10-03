@@ -7,9 +7,16 @@
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--green:#16a34a;--red:#dc2626;--blue:#2563eb;--orange:#ea580c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-header{background:#111827;color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5}
+header{background:#111827;color:white;padding:18px 16px 16px;position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px}
 header h1{font-size:21px;margin:0 0 4px}header p{margin:0;color:#d1d5db;font-size:13px}
 main{max-width:720px;margin:auto;padding:14px 12px 35px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px #00000008}
+.header-home{flex:none;border:1px solid #4b5563;background:transparent;color:white;border-radius:10px;padding:9px 11px;font-weight:700;cursor:pointer}
+.home-screen{max-width:none;min-height:calc(100vh - 75px);min-height:calc(100svh - 75px);display:grid;place-items:center;padding:22px}
+.welcome-card{width:min(100%,520px);padding:34px 26px;text-align:center}
+.welcome-icon{font-size:42px;margin-bottom:10px}
+.welcome-card h2{font-size:24px;margin:0 0 8px}
+.welcome-card .note{font-size:14px;margin:0 auto 24px}
+.start-button{max-width:360px;margin:0 auto;display:block}
 .stat{text-align:center}.stat strong{display:block;font-size:28px}.stat span{font-size:12px;color:var(--muted)}
 .big{width:100%;border:0;border-radius:18px;padding:22px 12px;font-size:22px;font-weight:800;color:white;cursor:pointer}.plus{background:var(--green)}.stop{background:var(--red)}.resume{background:var(--blue)}
 button:disabled{opacity:.45;cursor:not-allowed}
@@ -27,8 +34,19 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </style>
 </head>
 <body>
-<header><h1>🏭 Controle de Produção</h1><p id="clock">--:--:--</p></header>
-<main>
+<header>
+  <div><h1>🏭 Controle de Produção</h1><p id="clock">--:--:--</p></div>
+  <button id="homeBtn" class="header-home hidden" type="button">← Tela inicial</button>
+</header>
+<main id="homeScreen" class="home-screen">
+  <section class="card welcome-card">
+    <div class="welcome-icon" aria-hidden="true">🏭</div>
+    <h2>Controle de Produção</h2>
+    <p class="note">Acompanhe a produção, os paletes e as paradas do turno.</p>
+    <button id="startProduction" class="big plus start-button" type="button">▶ INICIAR PRODUÇÃO</button>
+  </section>
+</main>
+<main id="productionScreen" class="hidden">
   <div class="card">
     <div class="row">
       <div><label>Produto</label><select id="produto"><option>Bloquinho 9×19×19</option><option>Blocão 9×19×29</option><option>Lajota</option><option>Outro</option></select></div>
@@ -129,6 +147,22 @@ function save(){localStorage.setItem(KEY,JSON.stringify(d))}
 function fmtTime(ms){let s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`}
 function clock(){document.getElementById("clock").textContent=new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"medium"})}
 setInterval(()=>{clock();render()},1000);clock();
+
+const homeScreen=document.getElementById("homeScreen");
+const productionScreen=document.getElementById("productionScreen");
+const homeBtn=document.getElementById("homeBtn");
+document.getElementById("startProduction").onclick=()=>{
+ homeScreen.classList.add("hidden");
+ productionScreen.classList.remove("hidden");
+ homeBtn.classList.remove("hidden");
+ window.scrollTo({top:0,behavior:"auto"});
+};
+homeBtn.onclick=()=>{
+ productionScreen.classList.add("hidden");
+ homeScreen.classList.remove("hidden");
+ homeBtn.classList.add("hidden");
+ window.scrollTo({top:0,behavior:"auto"});
+};
 
 function add(){
  if(d.ativa)return alert("Finalize a parada antes de produzir o próximo palete.");
