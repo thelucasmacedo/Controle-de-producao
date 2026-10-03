@@ -1,16 +1,976 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="pt-BR" class="dark h-full">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Produção — Bloquinho 9×19×19</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        clay: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                            800: '#9a3412',
+                            900: '#7c2d12',
+                            950: '#431407',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Animações e efeitos táteis */
+        .btn-active:active {
+            transform: scale(0.96);
+        }
+
+        .pulse-red {
+            animation: pulse-red-anim 1.5s infinite;
+        }
+
+        @keyframes pulse-red-anim {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
+
+        .pulse-green-text {
+            animation: pulse-green-text-anim 0.3s ease-out;
+        }
+
+        @keyframes pulse-green-text-anim {
+            0% { transform: scale(1.15); color: #34d399; }
+            100% { transform: scale(1); }
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+    </style>
 </head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col justify-between select-none pb-8">
 
-<body>
-  Hello world
-  <script src="script.js"></script>
+    <!-- CABEÇALHO DA CERÂMICA & STATUS -->
+    <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 shadow-xl px-4 py-3">
+        <div class="max-w-xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-br from-clay-600 to-clay-800 text-white p-2 rounded-2xl shadow-lg border border-clay-500/30">
+                    <i data-lucide="factory" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold tracking-widest text-clay-500 uppercase block">CERÂMICA INDUSTRIAL</span>
+                    <h1 class="text-sm sm:text-base font-black text-white tracking-tight leading-none">PRODUÇÃO — BLOQUINHO 9×19×19</h1>
+                </div>
+            </div>
+
+            <!-- Botões de Ação do Topo -->
+            <div class="flex items-center space-x-2">
+                <button onclick="toggleAudio()" id="btn-audio" title="Alternar Som" class="p-2.5 text-slate-400 hover:text-white rounded-xl bg-slate-800/80 border border-slate-700/60 transition active:scale-95">
+                    <i data-lucide="volume-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="openTargetModal()" title="Configurar Meta" class="p-2.5 text-slate-400 hover:text-white rounded-xl bg-slate-800/80 border border-slate-700/60 transition active:scale-95">
+                    <i data-lucide="target" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Banner de Status Dinâmico -->
+        <div id="status-banner" class="max-w-xl mx-auto mt-2.5 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-300 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+            <div class="flex items-center space-x-2">
+                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span id="status-text" class="uppercase tracking-wider">🟢 Produção em andamento</span>
+            </div>
+            <div id="status-timer" class="font-mono-num text-xs font-semibold text-slate-300">
+                Turno ativo
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="max-w-xl mx-auto w-full px-4 pt-4 flex-1 space-y-4">
+
+        <!-- CARD PRINCIPAL DE PALETES -->
+        <section class="bg-slate-900 border-2 border-slate-800 rounded-3xl p-5 shadow-2xl relative overflow-hidden backdrop-blur">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-400">PALETES PRODUZIDOS</span>
+                <span id="last-cycle-badge" class="text-[11px] font-semibold bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700/50">
+                    Ciclo anterior: --
+                </span>
+            </div>
+
+            <!-- Mostrador Gigante -->
+            <div class="text-center my-2">
+                <div id="pallet-counter" class="font-mono-num text-7xl sm:text-8xl font-black text-emerald-400 tracking-tight transition-transform duration-150 inline-block">
+                    0
+                </div>
+                <div class="text-xs text-slate-500 font-medium flex items-center justify-center space-x-1 mt-1">
+                    <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                    <span id="last-time-info">Nenhum palete registrado hoje</span>
+                </div>
+            </div>
+
+            <!-- ÁREA DOS BOTÕES DE AÇÃO PRINCIPAL -->
+            <div class="mt-4 space-y-3">
+                <!-- Se Produção Ativa: Botão +1 Gigante -->
+                <div id="action-producing" class="space-y-3">
+                    <button id="btn-increment" onclick="registerPallet()" class="btn-active w-full h-36 sm:h-40 bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 rounded-3xl shadow-2xl shadow-emerald-950/80 flex flex-col items-center justify-center space-y-1 transition-all border-4 border-emerald-400/40 cursor-pointer active:bg-emerald-400">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="plus-circle" class="w-10 h-10 stroke-[3]"></i>
+                            <span class="text-3xl sm:text-4xl font-black tracking-tight uppercase">+1 PALETE</span>
+                        </div>
+                        <span class="text-xs font-extrabold text-emerald-950/80 tracking-wider uppercase">Clique para registrar saída</span>
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="decrementPallet()" class="btn-active bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold py-3.5 px-4 rounded-2xl border border-slate-700/60 flex items-center justify-center space-x-2 transition text-xs sm:text-sm">
+                            <i data-lucide="undo-2" class="w-4 h-4 text-amber-500"></i>
+                            <span>Desfazer (-1)</span>
+                        </button>
+
+                        <button onclick="openStopModal()" class="btn-active bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold py-3.5 px-4 rounded-2xl border border-rose-500/30 flex items-center justify-center space-x-2 transition text-xs sm:text-sm">
+                            <i data-lucide="pause-circle" class="w-4 h-4 text-rose-500"></i>
+                            <span>🔴 REGISTRAR PARADA</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Se Parada Ativa: Botão Retomar Gigante -->
+                <div id="action-stopped" class="hidden space-y-3">
+                    <div class="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 text-xs font-semibold space-y-1">
+                        <div class="flex justify-between items-center font-bold text-rose-400">
+                            <span id="stopped-equip-title">PARADA REGISTRADA</span>
+                            <span id="stopped-live-timer" class="font-mono-num text-sm">00:00</span>
+                        </div>
+                        <p id="stopped-reason-text" class="text-slate-300 italic text-[11px] font-normal">Aguardando retomada...</p>
+                    </div>
+
+                    <button onclick="resumeProduction()" class="btn-active w-full h-36 sm:h-40 bg-gradient-to-b from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 rounded-3xl shadow-2xl shadow-emerald-950/80 flex flex-col items-center justify-center space-y-1 transition-all border-4 border-amber-300/40 cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="play-circle" class="w-10 h-10 stroke-[3]"></i>
+                            <span class="text-2xl sm:text-3xl font-black tracking-tight uppercase">▶️ RETOMAR PRODUÇÃO</span>
+                        </div>
+                        <span class="text-xs font-extrabold text-slate-950/80 tracking-wider uppercase">Clique para voltar a contar paletes</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUADRO DE METRICAS E RITMO -->
+        <section class="grid grid-cols-2 gap-3">
+            <!-- Card Ritmo Atual -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase">RITMO ATUAL</span>
+                    <i data-lucide="gauge" class="w-4 h-4 text-clay-500"></i>
+                </div>
+                <div class="my-1">
+                    <span id="pace-value" class="font-mono-num text-2xl font-black text-white">0.0</span>
+                    <span class="text-xs text-slate-400 font-semibold">paletes/h</span>
+                </div>
+                <div id="pace-badge" class="text-[10px] font-bold text-slate-400">
+                    Calculado no tempo ativo
+                </div>
+            </div>
+
+            <!-- Card Meta vs Falta -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase">META DO TURNO</span>
+                    <button onclick="openTargetModal()" class="text-xs text-clay-500 hover:underline font-bold">Ajustar</button>
+                </div>
+                <div class="my-1">
+                    <span id="target-value" class="font-mono-num text-2xl font-black text-white">75</span>
+                    <span class="text-xs text-slate-400 font-semibold">paletes</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden my-1">
+                    <div id="target-progress-bar" class="bg-gradient-to-r from-clay-500 to-emerald-400 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div id="target-remaining-text" class="text-[10px] font-bold text-slate-400">
+                    Faltam 75 para a meta
+                </div>
+            </div>
+        </section>
+
+        <!-- RESUMO DO TURNO & INDICADORES -->
+        <section class="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-clay-500"></i>
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider">📊 Resumo do Turno</h2>
+                </div>
+                <span id="shift-start-time" class="text-[11px] text-slate-400 font-medium">Início: --:--</span>
+            </div>
+
+            <!-- Tabela de Indicadores Principais -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Tempo Produzindo</span>
+                    <span id="sum-prod-time" class="font-mono-num text-sm font-bold text-emerald-400">0h 00m</span>
+                </div>
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Tempo Parado</span>
+                    <span id="sum-stop-time" class="font-mono-num text-sm font-bold text-rose-400">0h 00m</span>
+                </div>
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Média p/ Palete</span>
+                    <span id="sum-avg-pallet" class="font-mono-num text-sm font-bold text-amber-400">0m 00s</span>
+                </div>
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Maior Parada</span>
+                    <span id="sum-max-stop" class="font-mono-num text-sm font-bold text-slate-200">0m</span>
+                </div>
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Paradas</span>
+                    <span id="sum-stop-count" class="font-mono-num text-sm font-bold text-slate-200">0</span>
+                </div>
+                <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">% Eficiência</span>
+                    <span id="sum-efficiency" class="font-mono-num text-sm font-bold text-emerald-400">100%</span>
+                </div>
+            </div>
+
+            <!-- ABAS DE HISTÓRICO: PARADAS vs PALETES -->
+            <div>
+                <div class="flex border-b border-slate-800 space-x-4 mb-3">
+                    <button onclick="switchTab('tab-stops')" id="btn-tab-stops" class="pb-2 text-xs font-bold text-clay-500 border-b-2 border-clay-500 transition">
+                        ⏱️ Histórico de Paradas (<span id="count-stops-badge">0</span>)
+                    </button>
+                    <button onclick="switchTab('tab-pallets')" id="btn-tab-pallets" class="pb-2 text-xs font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition">
+                        📦 Últimos Paletes (<span id="count-pallets-badge">0</span>)
+                    </button>
+                </div>
+
+                <!-- Conteúdo Aba Paradas -->
+                <div id="tab-stops-content" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <div id="stops-empty" class="text-center py-6 text-slate-500 text-xs">
+                        Nenhuma parada registrada neste turno. 🟢
+                    </div>
+                    <div id="stops-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Conteúdo Aba Paletes -->
+                <div id="tab-pallets-content" class="hidden space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <div id="pallets-empty" class="text-center py-6 text-slate-500 text-xs">
+                        Nenhum palete produzido ainda.
+                    </div>
+                    <div id="pallets-list" class="space-y-1.5"></div>
+                </div>
+            </div>
+
+            <!-- BOTÕES DE AÇÃO DO TURNO -->
+            <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-3">
+                <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-3 rounded-2xl border border-slate-700 text-xs flex items-center justify-center space-x-2 transition">
+                    <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Exportar CSV</span>
+                </button>
+                
+                <button onclick="openResetShiftModal()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold py-3 px-3 rounded-2xl border border-rose-500/30 text-xs flex items-center justify-center space-x-2 transition">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-500"></i>
+                    <span>Fechar / Novo Turno</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL: REGISTRAR PARADA -->
+    <div id="modal-stop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2 text-rose-500">
+                    <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+                    <h3 class="text-base font-bold text-white">Registrar Parada da Linha</h3>
+                </div>
+                <button onclick="closeStopModal()" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Seleção de Equipamento com Botões Rápidos -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-300 uppercase block">📍 Equipamento com Defeito:</label>
+                <div class="grid grid-cols-3 gap-2" id="equip-buttons">
+                    <button type="button" onclick="selectEquip('Laminador 1')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Laminador 1</button>
+                    <button type="button" onclick="selectEquip('Laminador 2')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Laminador 2</button>
+                    <button type="button" onclick="selectEquip('Esteira 1')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Esteira 1</button>
+                    <button type="button" onclick="selectEquip('Esteira 2')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Esteira 2</button>
+                    <button type="button" onclick="selectEquip('Cortador')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Cortador</button>
+                    <button type="button" onclick="selectEquip('Prensa')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Prensa</button>
+                    <button type="button" onclick="selectEquip('Motor')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Motor</button>
+                    <button type="button" onclick="selectEquip('Elétrica')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Elétrica</button>
+                    <button type="button" onclick="selectEquip('Outro')" class="equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition">Outro</button>
+                </div>
+            </div>
+
+            <!-- Descrição/Motivo -->
+            <div class="space-y-1.5">
+                <label for="stop-reason-input" class="text-xs font-bold text-slate-300 uppercase block">📝 O que aconteceu? (opcional):</label>
+                <textarea id="stop-reason-input" rows="2" placeholder="Ex: Entupiu de barro, correia partida, ajuste..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition"></textarea>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="confirmStartStop()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-4 rounded-2xl text-sm shadow-xl shadow-rose-600/30 transition uppercase tracking-wider flex items-center justify-center space-x-2">
+                    <i data-lucide="pause-circle" class="w-5 h-5"></i>
+                    <span>CONFIRMAR PARADA AGORA</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIGURAR META -->
+    <div id="modal-target" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="target" class="w-4 h-4 text-clay-500"></i>
+                    <span>Ajustar Meta do Turno</span>
+                </h3>
+                <button onclick="closeTargetModal()" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-2">
+                <label for="input-shift-target" class="text-xs font-semibold text-slate-300">Quantidade de Paletes (Meta):</label>
+                <input type="number" id="input-shift-target" min="1" max="1000" value="75" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-center text-xl font-bold font-mono-num text-white focus:outline-none focus:border-clay-500">
+            </div>
+
+            <button onclick="saveTarget()" class="w-full bg-clay-600 hover:bg-clay-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg transition">
+                Salvar Meta
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: REINICIAR TURNO -->
+    <div id="modal-reset" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-5 text-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/20">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">Fechar Turno Atual?</h3>
+                <p class="text-xs text-slate-400 mt-1">Todos os paletes e paradas serão zerados para um novo turno. Certifique-se de exportar o CSV antes se desejar guardar os dados.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="closeResetShiftModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 rounded-xl text-xs transition">
+                    Cancelar
+                </button>
+                <button onclick="confirmResetShift()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-rose-600/30 transition">
+                    Sim, Zerar Turno
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CHAVE DE ARMAZENAMENTO NO LOCALSTORAGE
+        const STORAGE_KEY = 'ceramic_pallet_prod_v1';
+
+        // ESTADO DA APLICAÇÃO
+        let appState = {
+            status: 'PRODUCING', // 'PRODUCING' ou 'STOPPED'
+            shiftStartTime: Date.now(),
+            shiftTarget: 75,
+            pallets: [], // [{ id, timestamp, isoTime, cycleSeconds }]
+            downtimes: [], // [{ id, equipment, reason, startTime, endTime, durationSeconds }]
+            activeStop: null, // { equipment, reason, startTime }
+            audioEnabled: true
+        };
+
+        let selectedEquipment = 'Laminador 1';
+        let timerInterval = null;
+
+        // INICIALIZAÇÃO
+        window.onload = function() {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            loadFromStorage();
+            updateUI();
+
+            // Loop de tempo real para atualizar cronômetros e ritmo a cada segundo
+            timerInterval = setInterval(() => {
+                updateTimersAndPace();
+            }, 1000);
+        };
+
+        function playSound(type) {
+            if (!appState.audioEnabled) return;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'pallet') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.08);
+                } else if (type === 'stop') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, ctx.currentTime);
+                    osc.frequency.setValueAtTime(200, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.2);
+                } else if (type === 'resume') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.15);
+                }
+            } catch (e) {
+                // Silencioso
+            }
+        }
+
+        function triggerVibration(pattern = [40]) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        }
+
+        function loadFromStorage() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    appState = { ...appState, ...parsed };
+                } catch (e) {
+                    console.error('Erro ao ler do localStorage', e);
+                }
+            }
+            if (!appState.shiftStartTime) {
+                appState.shiftStartTime = Date.now();
+            }
+        }
+
+        // REGISTRAR +1 PALETE
+        function registerPallet() {
+            if (appState.status === 'STOPPED') return;
+
+            const now = Date.now();
+            let cycleSec = 0;
+
+            if (appState.pallets.length > 0) {
+                const lastPalletTime = new Date(appState.pallets[0].isoTime).getTime();
+                cycleSec = Math.max(0, Math.floor((now - lastPalletTime) / 1000));
+            } else {
+                cycleSec = Math.max(0, Math.floor((now - appState.shiftStartTime) / 1000));
+            }
+
+            const timeStr = new Date(now).toLocaleTimeString('pt-BR');
+
+            const newPallet = {
+                id: appState.pallets.length + 1,
+                timestamp: timeStr,
+                isoTime: new Date(now).toISOString(),
+                cycleSeconds: cycleSec
+            };
+
+            appState.pallets.unshift(newPallet); // Insere no início
+            saveToStorage();
+
+            playSound('pallet');
+            triggerVibration([45]);
+
+            // Animação no mostrador
+            const counterEl = document.getElementById('pallet-counter');
+            counterEl.classList.add('pulse-green-text');
+            setTimeout(() => counterEl.classList.remove('pulse-green-text'), 300);
+
+            updateUI();
+        }
+
+        // DESFAZER ULTIMO PALETE (-1)
+        function decrementPallet() {
+            if (appState.pallets.length === 0) return;
+            appState.pallets.shift(); // Remove o mais recente
+            saveToStorage();
+            triggerVibration([30, 30]);
+            updateUI();
+        }
+
+        // SELEÇÃO DE EQUIPAMENTO NO MODAL
+        function selectEquip(equipName) {
+            selectedEquipment = equipName;
+            const buttons = document.querySelectorAll('.equip-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText.trim() === equipName) {
+                    btn.className = 'equip-btn bg-rose-600 text-white font-bold p-2.5 text-xs rounded-xl border border-rose-500 text-center transition shadow-md';
+                } else {
+                    btn.className = 'equip-btn bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold p-2.5 text-xs rounded-xl border border-slate-700 text-center transition';
+                }
+            });
+        }
+
+        // MODAL DE PARADA
+        function openStopModal() {
+            selectEquip('Laminador 1');
+            document.getElementById('stop-reason-input').value = '';
+            document.getElementById('modal-stop').classList.remove('hidden');
+        }
+
+        function closeStopModal() {
+            document.getElementById('modal-stop').classList.add('hidden');
+        }
+
+        function confirmStartStop() {
+            const reasonText = document.getElementById('stop-reason-input').value.trim() || 'Sem observações';
+            const now = Date.now();
+
+            appState.status = 'STOPPED';
+            appState.activeStop = {
+                equipment: selectedEquipment,
+                reason: reasonText,
+                startTime: now,
+                startTimeStr: new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            saveToStorage();
+            playSound('stop');
+            triggerVibration([80, 40, 80]);
+
+            closeStopModal();
+            updateUI();
+        }
+
+        // RETOMAR PRODUÇÃO
+        function resumeProduction() {
+            if (appState.status !== 'STOPPED' || !appState.activeStop) return;
+
+            const now = Date.now();
+            const durationSec = Math.max(0, Math.floor((now - appState.activeStop.startTime) / 1000));
+            const endTimeStr = new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            const completedStop = {
+                id: appState.downtimes.length + 1,
+                equipment: appState.activeStop.equipment,
+                reason: appState.activeStop.reason,
+                startTime: appState.activeStop.startTimeStr,
+                endTime: endTimeStr,
+                durationSeconds: durationSec
+            };
+
+            appState.downtimes.unshift(completedStop);
+            appState.status = 'PRODUCING';
+            appState.activeStop = null;
+
+            saveToStorage();
+            playSound('resume');
+            triggerVibration([50]);
+
+            updateUI();
+        }
+
+        function updateUI() {
+            // 1. Atualizar Contador de Paletes
+            const totalPallets = appState.pallets.length;
+            document.getElementById('pallet-counter').innerText = totalPallets;
+
+            // 2. Informação do último palete
+            if (totalPallets > 0) {
+                const last = appState.pallets[0];
+                document.getElementById('last-time-info').innerText = `Saída nº ${totalPallets} às ${last.timestamp}`;
+                document.getElementById('last-cycle-badge').innerText = `Ciclo anterior: ${formatSeconds(last.cycleSeconds)}`;
+            } else {
+                document.getElementById('last-time-info').innerText = 'Nenhum palete registrado hoje';
+                document.getElementById('last-cycle-badge').innerText = 'Ciclo anterior: --';
+            }
+
+            // 3. Status Banner e Alternância de Controles (Produzindo vs Parado)
+            const bannerEl = document.getElementById('status-banner');
+            const dotEl = document.getElementById('status-dot');
+            const textEl = document.getElementById('status-text');
+            const prodAction = document.getElementById('action-producing');
+            const stopAction = document.getElementById('action-stopped');
+
+            if (appState.status === 'PRODUCING') {
+                bannerEl.className = "max-w-xl mx-auto mt-2.5 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-300 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping";
+                textEl.innerText = "🟢 Produção em andamento";
+
+                prodAction.classList.remove('hidden');
+                stopAction.classList.add('hidden');
+            } else {
+                bannerEl.className = "max-w-xl mx-auto mt-2.5 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-300 bg-rose-500/20 border border-rose-500/40 text-rose-300 pulse-red";
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse";
+                textEl.innerText = `🔴 PARADA: ${appState.activeStop ? appState.activeStop.equipment : ''}`;
+
+                prodAction.classList.add('hidden');
+                stopAction.classList.remove('hidden');
+
+                if (appState.activeStop) {
+                    document.getElementById('stopped-equip-title').innerText = `PARADA: ${appState.activeStop.equipment}`;
+                    document.getElementById('stopped-reason-text').innerText = `Motivo: "${appState.activeStop.reason}"`;
+                }
+            }
+
+            // 4. Meta do Turno
+            document.getElementById('target-value').innerText = appState.shiftTarget;
+            const remaining = Math.max(0, appState.shiftTarget - totalPallets);
+            document.getElementById('target-remaining-text').innerText = remaining === 0 ? '🎉 Meta atingida!' : `Faltam ${remaining} para a meta`;
+
+            const targetPercent = Math.min(100, Math.round((totalPallets / appState.shiftTarget) * 100));
+            document.getElementById('target-progress-bar').style.width = `${targetPercent}%`;
+
+            // 5. Início do Turno
+            const shiftDate = new Date(appState.shiftStartTime);
+            document.getElementById('shift-start-time').innerText = `Início: ${shiftDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+            // 6. Atualizar Contadores e Tabelas
+            renderLists();
+            updateCalculatedMetrics();
+        }
+
+        function updateCalculatedMetrics() {
+            const now = Date.now();
+            const totalPallets = appState.pallets.length;
+
+            // Tempo total decorrido do turno
+            const totalElapsedSec = Math.max(0, Math.floor((now - appState.shiftStartTime) / 1000));
+
+            // Tempo total parado acumulado das paradas encerradas
+            let completedStopSec = appState.downtimes.reduce((acc, curr) => acc + curr.durationSeconds, 0);
+
+            // Se estiver em parada ativa agora, soma o tempo decorrido da parada atual
+            let currentActiveStopSec = 0;
+            if (appState.status === 'STOPPED' && appState.activeStop) {
+                currentActiveStopSec = Math.max(0, Math.floor((now - appState.activeStop.startTime) / 1000));
+            }
+
+            const totalStopSec = completedStopSec + currentActiveStopSec;
+            const totalProdSec = Math.max(0, totalElapsedSec - totalStopSec);
+
+            // Ritmo (paletes por hora de produção ativa)
+            let pace = 0;
+            if (totalProdSec > 60 && totalPallets > 0) {
+                pace = (totalPallets / (totalProdSec / 3600)).toFixed(1);
+            }
+            document.getElementById('pace-value').innerText = pace;
+
+            // Badge de Ritmo
+            const paceBadge = document.getElementById('pace-badge');
+            if (pace >= 10) {
+                paceBadge.className = "text-[10px] font-bold text-emerald-400 flex items-center space-x-1";
+                paceBadge.innerHTML = '<span>🟢 Ritmo excelente (10+/h)</span>';
+            } else if (pace > 0) {
+                paceBadge.className = "text-[10px] font-bold text-amber-400 flex items-center space-x-1";
+                paceBadge.innerHTML = '<span>🟡 Ritmo regular</span>';
+            } else {
+                paceBadge.className = "text-[10px] font-bold text-slate-400";
+                paceBadge.innerText = 'Aguardando mais saídas';
+            }
+
+            // Atualizar Quadro do Resumo do Turno
+            document.getElementById('sum-prod-time').innerText = formatHoursMins(totalProdSec);
+            document.getElementById('sum-stop-time').innerText = formatHoursMins(totalStopSec);
+
+            // Média por Palete
+            const avgSec = totalPallets > 0 ? Math.round(totalProdSec / totalPallets) : 0;
+            document.getElementById('sum-avg-pallet').innerText = formatSeconds(avgSec);
+
+            // Maior Parada
+            let maxStop = 0;
+            appState.downtimes.forEach(d => { if (d.durationSeconds > maxStop) maxStop = d.durationSeconds; });
+            if (currentActiveStopSec > maxStop) maxStop = currentActiveStopSec;
+            document.getElementById('sum-max-stop').innerText = formatMinutesOnly(maxStop);
+
+            // Contagem total de paradas
+            const stopCount = appState.downtimes.length + (appState.status === 'STOPPED' ? 1 : 0);
+            document.getElementById('sum-stop-count').innerText = stopCount;
+
+            // Eficiência (Tempo Produzindo / Tempo Total)
+            const eff = totalElapsedSec > 0 ? Math.round((totalProdSec / totalElapsedSec) * 100) : 100;
+            document.getElementById('sum-efficiency').innerText = `${eff}%`;
+        }
+
+        function updateTimersAndPace() {
+            const now = Date.now();
+
+            if (appState.status === 'PRODUCING') {
+                const shiftElapsed = Math.floor((now - appState.shiftStartTime) / 1000);
+                document.getElementById('status-timer').innerText = `Em rodagem: ${formatHoursMins(shiftElapsed)}`;
+            } else if (appState.status === 'STOPPED' && appState.activeStop) {
+                const stopElapsed = Math.floor((now - appState.activeStop.startTime) / 1000);
+                const formatted = formatSeconds(stopElapsed);
+                document.getElementById('status-timer').innerText = `Parado: ${formatted}`;
+                document.getElementById('stopped-live-timer').innerText = formatted;
+            }
+
+            updateCalculatedMetrics();
+        }
+
+        function renderLists() {
+            // Badges
+            document.getElementById('count-stops-badge').innerText = appState.downtimes.length;
+            document.getElementById('count-pallets-badge').innerText = appState.pallets.length;
+
+            // 1. Renderizar Paradas
+            const stopsEmpty = document.getElementById('stops-empty');
+            const stopsList = document.getElementById('stops-list');
+
+            if (appState.downtimes.length === 0 && appState.status !== 'STOPPED') {
+                stopsEmpty.classList.remove('hidden');
+                stopsList.innerHTML = '';
+            } else {
+                stopsEmpty.classList.add('hidden');
+                let html = '';
+
+                // Se houver parada ativa em andamento
+                if (appState.status === 'STOPPED' && appState.activeStop) {
+                    const elapsed = Math.floor((Date.now() - appState.activeStop.startTime) / 1000);
+                    html += `
+                        <div class="p-2.5 bg-rose-500/20 border border-rose-500/40 rounded-xl text-xs flex justify-between items-center animate-pulse">
+                            <div>
+                                <div class="font-bold text-rose-300 flex items-center space-x-1.5">
+                                    <span>🔴 ${appState.activeStop.startTimeStr} — ${appState.activeStop.equipment}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-300 italic">${appState.activeStop.reason}</div>
+                            </div>
+                            <span class="font-mono-num font-extrabold text-rose-400 bg-rose-950/80 px-2 py-1 rounded border border-rose-800">
+                                ${formatSeconds(elapsed)} (em curso)
+                            </span>
+                        </div>
+                    `;
+                }
+
+                appState.downtimes.forEach(stop => {
+                    html += `
+                        <div class="p-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs flex justify-between items-center hover:border-slate-700 transition">
+                            <div>
+                                <div class="font-bold text-slate-200 flex items-center space-x-1.5">
+                                    <span class="text-rose-400">⏱️ ${stop.startTime} - ${stop.endTime}</span>
+                                    <span class="text-slate-400">•</span>
+                                    <span class="text-white">${stop.equipment}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-400 italic">${stop.reason}</div>
+                            </div>
+                            <span class="font-mono-num font-bold text-amber-400 bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                                ${formatMinutesOnly(stop.durationSeconds)}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                stopsList.innerHTML = html;
+            }
+
+            // 2. Renderizar Paletes
+            const palletsEmpty = document.getElementById('pallets-empty');
+            const palletsList = document.getElementById('pallets-list');
+
+            if (appState.pallets.length === 0) {
+                palletsEmpty.classList.remove('hidden');
+                palletsList.innerHTML = '';
+            } else {
+                palletsEmpty.classList.add('hidden');
+                let html = '';
+                const total = appState.pallets.length;
+
+                appState.pallets.forEach((pallet, idx) => {
+                    const num = total - idx;
+                    html += `
+                        <div class="p-2 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-mono-num font-bold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    #${num}
+                                </span>
+                                <span class="text-slate-300 font-semibold">Palete nº ${num}</span>
+                            </div>
+                            <div class="text-right flex items-center space-x-3">
+                                <span class="text-slate-400 font-mono-num">${pallet.timestamp}</span>
+                                <span class="text-slate-500 text-[11px] font-mono-num">(${formatSeconds(pallet.cycleSeconds)})</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                palletsList.innerHTML = html;
+            }
+        }
+
+        function formatSeconds(totalSec) {
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            if (mins > 0) {
+                return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+            }
+            return `${secs}s`;
+        }
+
+        function formatMinutesOnly(totalSec) {
+            const mins = Math.round(totalSec / 60);
+            if (mins === 0 && totalSec > 0) return '1 min';
+            return `${mins} min`;
+        }
+
+        function formatHoursMins(totalSec) {
+            const hrs = Math.floor(totalSec / 3600);
+            const mins = Math.floor((totalSec % 3600) / 60);
+            if (hrs > 0) {
+                return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
+            }
+            return `${mins} min`;
+        }
+
+        function switchTab(tabId) {
+            const btnStops = document.getElementById('btn-tab-stops');
+            const btnPallets = document.getElementById('btn-tab-pallets');
+            const contentStops = document.getElementById('tab-stops-content');
+            const contentPallets = document.getElementById('tab-pallets-content');
+
+            if (tabId === 'tab-stops') {
+                btnStops.className = "pb-2 text-xs font-bold text-clay-500 border-b-2 border-clay-500 transition";
+                btnPallets.className = "pb-2 text-xs font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition";
+                contentStops.classList.remove('hidden');
+                contentPallets.classList.add('hidden');
+            } else {
+                btnPallets.className = "pb-2 text-xs font-bold text-clay-500 border-b-2 border-clay-500 transition";
+                btnStops.className = "pb-2 text-xs font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition";
+                contentPallets.classList.remove('hidden');
+                contentStops.classList.add('hidden');
+            }
+        }
+
+        function toggleAudio() {
+            appState.audioEnabled = !appState.audioEnabled;
+            saveToStorage();
+            const btn = document.getElementById('btn-audio');
+            btn.innerHTML = appState.audioEnabled
+                ? '<i data-lucide="volume-2" class="w-4 h-4 text-emerald-400"></i>'
+                : '<i data-lucide="volume-x" class="w-4 h-4 text-slate-500"></i>';
+            lucide.createIcons();
+        }
+
+        // MODAIS DE META E REINÍCIO
+        function openTargetModal() {
+            document.getElementById('input-shift-target').value = appState.shiftTarget;
+            document.getElementById('modal-target').classList.remove('hidden');
+        }
+
+        function closeTargetModal() {
+            document.getElementById('modal-target').classList.add('hidden');
+        }
+
+        function saveTarget() {
+            const val = parseInt(document.getElementById('input-shift-target').value, 10);
+            if (val && val > 0) {
+                appState.shiftTarget = val;
+                saveToStorage();
+                closeTargetModal();
+                updateUI();
+            }
+        }
+
+        function openResetShiftModal() {
+            document.getElementById('modal-reset').classList.remove('hidden');
+        }
+
+        function closeResetShiftModal() {
+            document.getElementById('modal-reset').classList.add('hidden');
+        }
+
+        function confirmResetShift() {
+            appState = {
+                status: 'PRODUCING',
+                shiftStartTime: Date.now(),
+                shiftTarget: appState.shiftTarget || 75,
+                pallets: [],
+                downtimes: [],
+                activeStop: null,
+                audioEnabled: appState.audioEnabled
+            };
+            saveToStorage();
+            closeResetShiftModal();
+            updateUI();
+        }
+
+        // EXPORTAÇÃO CSV
+        function exportCSV() {
+            const dateStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            let csvContent = "\uFEFF"; // BOM para UTF-8 no Excel
+
+            csvContent += "=== RELATÓRIO DE PRODUÇÃO DE PALETES - CERÂMICA ===\n";
+            csvContent += `Produto;Bloquinho 9x19x19\n`;
+            csvContent += `Data do Relatório;${new Date().toLocaleString('pt-BR')}\n`;
+            csvContent += `Total de Paletes;${appState.pallets.length}\n`;
+            csvContent += `Meta do Turno;${appState.shiftTarget}\n\n`;
+
+            csvContent += "=== HISTÓRICO DE PARADAS ===\n";
+            csvContent += "ID;Início;Fim;Equipamento;Duração (min);Motivo\n";
+            appState.downtimes.forEach(d => {
+                const mins = (d.durationSeconds / 60).toFixed(1);
+                csvContent += `${d.id};"${d.startTime}";"${d.endTime}";"${d.equipment}";${mins};"${d.reason}"\n`;
+            });
+
+            csvContent += "\n=== HISTÓRICO DE SAÍDAS DE PALETES ===\n";
+            csvContent += "Palete Nº;Horário de Saída;Tempo do Ciclo (s)\n";
+            const total = appState.pallets.length;
+            appState.pallets.forEach((p, idx) => {
+                csvContent += `${total - idx};"${p.timestamp}";${p.cycleSeconds}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Producao_Paletes_Ceramica_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
 </body>
-
 </html>
