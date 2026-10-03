@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Controle de Produção</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--green:#16a34a;--red:#dc2626;--blue:#2563eb;--orange:#ea580c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -17,6 +18,27 @@ main{max-width:720px;margin:auto;padding:14px 12px 35px}.grid{display:grid;grid-
 .welcome-card h2{font-size:24px;margin:0 0 8px}
 .welcome-card .note{font-size:14px;margin:0 auto 24px}
 .start-button{max-width:360px;margin:0 auto;display:block}
+#historyHomeBtn{display:block;width:min(100%,360px);margin:10px auto 0}
+.auth-page{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:22px}
+.auth-card{width:min(100%,520px);padding:34px 26px;text-align:center}
+.auth-card h1{font-size:24px;margin:0 0 10px}
+.auth-card .note{font-size:14px;line-height:1.55;margin:0 auto 22px}
+.auth-actions{display:grid;gap:10px;width:min(100%,360px);margin:auto}
+.auth-secondary{min-height:44px;font-size:15px}
+.auth-loading{color:var(--muted);font-size:14px}
+#authControls{display:flex;align-items:center;gap:8px}
+.history-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.period-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.period-card h3{font-size:14px;margin:0 0 8px;color:var(--text)}
+.period-card p{font-size:13px;color:var(--muted);margin:5px 0}
+.period-card strong{color:var(--text)}
+.period-status{margin:10px 0 0}
+.readonly-note{padding:10px;border-radius:10px;background:#eff6ff;color:#1e40af}
+.success-note{color:#166534}
+.error-note{color:#991b1b}
+.day-total{padding:12px;border-radius:12px;background:#f9fafb;margin-top:12px}
+.day-total strong{font-size:18px}
+@media(max-width:520px){.history-summary{grid-template-columns:1fr}}
 .stat{text-align:center}.stat strong{display:block;font-size:28px}.stat span{font-size:12px;color:var(--muted)}
 .big{width:100%;border:0;border-radius:18px;padding:22px 12px;font-size:22px;font-weight:800;color:white;cursor:pointer}.plus{background:var(--green)}.stop{background:var(--red)}.resume{background:var(--blue)}
 button:disabled{opacity:.45;cursor:not-allowed}
@@ -34,19 +56,48 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </style>
 </head>
 <body>
+<div id="auth-root"></div>
+<div id="appContent" class="hidden">
 <header>
   <div><h1>🏭 Controle de Produção</h1><p id="clock">--:--:--</p></div>
   <button id="homeBtn" class="header-home hidden" type="button">← Tela inicial</button>
+  <div id="authControls"></div>
 </header>
 <main id="homeScreen" class="home-screen">
   <section class="card welcome-card">
     <div class="welcome-icon" aria-hidden="true">🏭</div>
     <h2>Controle de Produção</h2>
     <p class="note">Acompanhe a produção, os paletes e as paradas do turno.</p>
+    <label for="startPeriod">Período para iniciar</label>
+    <select id="startPeriod">
+      <option value="morning">Manhã · 07:00–12:00</option>
+      <option value="afternoon">Tarde · 13:00–17:00</option>
+    </select>
     <button id="startProduction" class="big plus start-button" type="button">▶ INICIAR PRODUÇÃO</button>
+    <button id="historyHomeBtn" class="small auth-secondary" type="button">📅 Consultar histórico</button>
+    <p id="startStatus" class="note period-status" role="status"></p>
   </section>
 </main>
 <main id="productionScreen" class="hidden">
+  <div class="card">
+    <h2>📅 Histórico do dia</h2>
+    <p class="note">Consulte os períodos da manhã (07h–12h) e da tarde (13h–17h).</p>
+    <div class="row">
+      <div><label for="historyDate">Data</label><input id="historyDate" type="date"></div>
+      <button id="loadDayBtn" class="small" type="button">Consultar dia</button>
+    </div>
+    <p id="historyStatus" class="note period-status" role="status">Escolha uma data para consultar.</p>
+    <div id="daySummary" aria-live="polite"></div>
+    <div class="actions" style="margin-top:10px">
+      <button id="exportDayBtn" class="small" type="button" disabled>⬇ Exportar dia CSV</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="selectedPeriodName">Período</h2>
+    <p id="periodStatus" class="note period-status" role="status">Aguardando conexão segura...</p>
+  </div>
+
   <div class="card">
     <div class="row">
       <div><label>Produto</label><select id="produto"><option>Bloquinho 9×19×19</option><option>Blocão 9×19×29</option><option>Lajota</option><option>Outro</option></select></div>
@@ -63,6 +114,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
   <div class="card">
     <div id="status" class="status">🟢 PRODUÇÃO EM ANDAMENTO</div>
+    <p id="readonlyNote" class="note readonly-note hidden">Este registro está em modo de consulta e não pode ser alterado.</p>
     <div class="progress"><div class="bar" id="bar"></div></div>
     <p class="note" id="progressText">0% da meta</p>
   </div>
@@ -91,8 +143,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
       <div class="kpi">Maior parada<br><b id="rMaior">--</b></div>
     </div>
     <div class="actions" style="margin-top:12px">
-      <button class="small" onclick="exportar()">⬇ Exportar relatório</button>
-      <button class="small danger" onclick="novoTurno()">↻ Novo turno</button>
+      <button id="exportPeriodBtn" class="small" type="button">⬇ Exportar relatório</button>
     </div>
   </div>
 </main>
@@ -130,85 +181,12 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
    </select>
    <label>Comentário</label>
    <textarea id="comentario" placeholder="Ex.: entupiu de barro, correia soltou..."></textarea>
-   <div class="actions" style="margin-top:10px"><button class="small" onclick="fecharModal()">Cancelar</button><button class="big stop" style="padding:12px;font-size:16px" onclick="confirmarParada()">CONFIRMAR PARADA</button></div>
+    <div class="actions" style="margin-top:10px"><button id="cancelModalBtn" class="small" type="button">Cancelar</button><button id="confirmStopBtn" class="big stop" style="padding:12px;font-size:16px" type="button">CONFIRMAR PARADA</button></div>
  </div>
 </div>
 
-<script>
-const KEY="producaoCeramicaV1";
-let d=JSON.parse(localStorage.getItem(KEY)||"null");
-if(!d)d={produto:"Bloquinho 9×19×19",meta:75,inicio:Date.now(),paletes:[],paradas:[],ativa:null};
-let produto=document.getElementById("produto"),meta=document.getElementById("meta");
-const blocosPorPalete={"Bloquinho 9×19×19":390,"Blocão 9×19×29":234};
-produto.value=d.produto;meta.value=d.meta;
-produto.onchange=()=>{d.produto=produto.value;save();render()};
-meta.onchange=()=>{d.meta=Math.max(1,+meta.value||1);save();render()};
-function save(){localStorage.setItem(KEY,JSON.stringify(d))}
-function fmtTime(ms){let s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`}
-function clock(){document.getElementById("clock").textContent=new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"medium"})}
-setInterval(()=>{clock();render()},1000);clock();
-
-const homeScreen=document.getElementById("homeScreen");
-const productionScreen=document.getElementById("productionScreen");
-const homeBtn=document.getElementById("homeBtn");
-document.getElementById("startProduction").onclick=()=>{
- homeScreen.classList.add("hidden");
- productionScreen.classList.remove("hidden");
- homeBtn.classList.remove("hidden");
- window.scrollTo({top:0,behavior:"auto"});
-};
-homeBtn.onclick=()=>{
- productionScreen.classList.add("hidden");
- homeScreen.classList.remove("hidden");
- homeBtn.classList.add("hidden");
- window.scrollTo({top:0,behavior:"auto"});
-};
-
-function add(){
- if(d.ativa)return alert("Finalize a parada antes de produzir o próximo palete.");
- let now=Date.now(),last=d.paletes.at(-1);
- d.paletes.push({n:d.paletes.length+1,t:now,interval:last?now-last.t:null});
- save();render();
-}
-document.getElementById("addBtn").onclick=add;
-document.getElementById("stopBtn").onclick=()=>{if(d.ativa)return;document.getElementById("modal").classList.remove("hidden");document.getElementById("comentario").value="";};
-function fecharModal(){document.getElementById("modal").classList.add("hidden")}
-function confirmarParada(){d.ativa={start:Date.now(),local:document.getElementById("local").value,comentario:document.getElementById("comentario").value.trim()};fecharModal();save();render()}
-document.getElementById("resumeBtn").onclick=()=>{
- if(!d.ativa)return;let now=Date.now();d.paradas.push({...d.ativa,end:now,dur:now-d.ativa.start});d.ativa=null;save();render();
-};
-function render(){
- let now=Date.now(), totalDown=d.paradas.reduce((a,p)=>a+p.dur,0)+(d.ativa?now-d.ativa.start:0);
- document.getElementById("count").textContent=d.paletes.length;
- document.getElementById("metaText").textContent="de "+d.meta;
- let blocosPorPaleteAtual=blocosPorPalete[d.produto];
- document.getElementById("totalBlocks").textContent=blocosPorPaleteAtual
-  ?(d.paletes.length*blocosPorPaleteAtual).toLocaleString("pt-BR")
-  :"—";
- document.getElementById("blocksUnit").textContent=blocosPorPaleteAtual
-  ?"blocos produzidos"
-  :"sem conversão cadastrada para este produto";
- document.getElementById("downtime").textContent=fmtTime(totalDown);
- let avg=d.paletes.length>1?(d.paletes.at(-1).t-d.paletes[0].t)/(d.paletes.length-1):null;
- document.getElementById("avg").textContent=avg?fmtTime(avg):"--";
- let pct=Math.min(100,d.paletes.length/d.meta*100);document.getElementById("bar").style.width=pct+"%";document.getElementById("progressText").textContent=pct.toFixed(0)+"% da meta";
- let status=document.getElementById("status"),stop=document.getElementById("stopBtn"),resume=document.getElementById("resumeBtn");
- if(d.ativa){status.className="status paused";status.textContent="🔴 PARADA — "+d.ativa.local;stop.classList.add("hidden");resume.classList.remove("hidden")}
- else{status.className="status";status.textContent="🟢 PRODUÇÃO EM ANDAMENTO";stop.classList.remove("hidden");resume.classList.add("hidden")}
- document.getElementById("paletes").innerHTML=d.paletes.slice().reverse().slice(0,15).map(p=>`<tr><td><b>${p.n}</b></td><td>${new Date(p.t).toLocaleTimeString("pt-BR")}</td><td>${p.interval?fmtTime(p.interval):"—"}</td></tr>`).join("");
- document.getElementById("paradas").innerHTML=d.paradas.slice().reverse().map(p=>`<tr><td>${new Date(p.start).toLocaleTimeString("pt-BR")}</td><td><span class="badge">${p.local}</span></td><td>${fmtTime(p.dur)}</td><td>${p.comentario||"—"}</td></tr>`).join("");
- document.getElementById("rMeta").textContent=d.meta;document.getElementById("rProd").textContent=d.paletes.length;document.getElementById("rFalta").textContent=Math.max(0,d.meta-d.paletes.length);
- let maior=d.paradas.reduce((a,p)=>Math.max(a,p.dur),0);document.getElementById("rMaior").textContent=maior?fmtTime(maior):"--";
-}
-function exportar(){
- let linhas=["RELATÓRIO DE PRODUÇÃO",`Produto: ${d.produto}`,`Meta: ${d.meta}`,`Paletes produzidos: ${d.paletes.length}`,"", "PALETES","Nº;Horário;Intervalo"];
- d.paletes.forEach(p=>linhas.push(`${p.n};${new Date(p.t).toLocaleTimeString("pt-BR")};${p.interval?fmtTime(p.interval):""}`));
- linhas.push("","PARADAS","Início;Fim;Local;Duração;Comentário");
- d.paradas.forEach(p=>linhas.push(`${new Date(p.start).toLocaleString("pt-BR")};${new Date(p.end).toLocaleString("pt-BR")};${p.local};${fmtTime(p.dur)};${(p.comentario||"").replaceAll(";"," ")}`));
- let blob=new Blob(["\ufeff"+linhas.join("\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="relatorio-producao.csv";a.click();URL.revokeObjectURL(a.href);
-}
-function novoTurno(){if(!confirm("Começar um novo turno? Os dados atuais serão apagados deste aparelho."))return;d={produto:produto.value,meta:+meta.value||75,inicio:Date.now(),paletes:[],paradas:[],ativa:null};save();render()}
-render();
-</script>
+ <script type="module" src="/src/production.js"></script>
+</div>
+<script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

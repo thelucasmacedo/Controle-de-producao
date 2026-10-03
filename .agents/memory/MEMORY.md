@@ -1,0 +1,1 @@
+- [Production periods](production-periods.md) — records are grouped into morning 07:00–12:00 and afternoon 13:00–17:00 periods.
