@@ -17,8 +17,10 @@ main{max-width:720px;margin:auto;padding:14px 12px 35px}.grid{display:grid;grid-
 .welcome-icon{font-size:42px;margin-bottom:10px}
 .welcome-card h2{font-size:24px;margin:0 0 8px}
 .welcome-card .note{font-size:14px;margin:0 auto 24px}
-.start-button{max-width:360px;margin:0 auto;display:block}
+.start-button{max-width:360px;margin:0 auto;display:block;font-size:18px}
 #historyHomeBtn{display:block;width:min(100%,360px);margin:10px auto 0}
+.finish-production{background:#374151;margin-top:10px}
+.lunch-break{padding:11px 12px;border-radius:10px;background:#fff7ed;color:#9a3412;margin-top:12px;font-size:13px}
 .auth-page{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:22px}
 .auth-card{width:min(100%,520px);padding:34px 26px;text-align:center}
 .auth-card h1{font-size:24px;margin:0 0 10px}
@@ -123,6 +125,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
   <div style="height:9px"></div>
   <button class="big stop" id="stopBtn">⏸ REGISTRAR PARADA</button>
   <button class="big resume hidden" id="resumeBtn">▶ RETOMAR PRODUÇÃO</button>
+  <button class="big finish-production hidden" id="closeProductionBtn" type="button">■ ENCERRAR PRODUÇÃO</button>
 
   <div class="card" style="margin-top:12px">
     <h2>📋 Últimos paletes</h2>
@@ -146,6 +149,32 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
       <button id="exportPeriodBtn" class="small" type="button">⬇ Exportar relatório</button>
     </div>
   </div>
+</main>
+
+<main id="summaryScreen" class="hidden" aria-live="polite">
+  <section class="card">
+    <h2>✅ Produção encerrada</h2>
+    <p id="summaryPeriod" class="note"></p>
+    <p id="summaryDate"></p>
+    <div class="grid">
+      <div class="card stat"><span>Paletes no período</span><strong id="summaryPallets">0</strong></div>
+      <div class="card stat"><span>Blocos no período</span><strong id="summaryBlocks">—</strong></div>
+    </div>
+    <div class="grid">
+      <div class="card stat"><span>Início da produção</span><strong id="summaryStartTime">—</strong></div>
+      <div class="card stat"><span>Encerramento</span><strong id="summaryEndTime">—</strong></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Resumo do dia</h2>
+    <div class="grid">
+      <div class="card stat"><span>Total de paletes</span><strong id="summaryDayPallets">0</strong></div>
+      <div class="card stat"><span>Total de blocos</span><strong id="summaryDayBlocks">—</strong></div>
+    </div>
+    <p id="summaryDayPeriods" class="note"></p>
+    <p id="summaryLunch" class="lunch-break">Almoço · 12:00–13:00 · fora do tempo parado da produção.</p>
+    <button id="summaryHistoryBtn" class="small" type="button">Consultar histórico deste dia</button>
+  </section>
 </main>
 
 <div class="modal hidden" id="modal">

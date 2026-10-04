@@ -5,6 +5,8 @@ description: Daily work periods used to organize production records.
 
 The production operation has two daily periods: morning from 07:00 to 12:00 and afternoon from 13:00 to 17:00.
 
-**Why:** the user specified these hours for separating and consulting production records by date and period.
+The lunch interval is 12:00–13:00 between periods. Show it separately in summaries and exclude it from machine downtime totals.
 
-**How to apply:** use these labels and time ranges for period selection, daily history, summaries, and exports.
+**Why:** the user specified these hours for separating daily records and identified noon as the lunch break, distinct from machine stops.
+
+**How to apply:** use these labels and time ranges for period selection, daily history, summaries, and exports. Keep lunch separate from machine downtime.

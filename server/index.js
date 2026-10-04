@@ -139,10 +139,15 @@ function normalizePayload(input) {
     return stop;
   };
 
+  const inicio = numberInRange(input.inicio, { min: 0 });
   return {
     produto: input.produto,
     meta: Math.trunc(numberInRange(input.meta, { min: 1, max: 10_000_000 })),
-    inicio: numberInRange(input.inicio, { min: 0 }),
+    inicio,
+    encerramento:
+      input.encerramento == null
+        ? null
+        : numberInRange(input.encerramento, { min: inicio }),
     paletes,
     paradas: input.paradas.map((item) => normalizeStop(item)),
     ativa: input.ativa == null ? null : normalizeStop(input.ativa, true),

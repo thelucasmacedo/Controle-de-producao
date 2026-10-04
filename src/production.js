@@ -14,6 +14,7 @@ function emptyRecord() {
     produto: "Bloquinho 9×19×19",
     meta: 75,
     inicio: Date.now(),
+    encerramento: null,
     paletes: [],
     paradas: [],
     ativa: null,
@@ -37,7 +38,9 @@ let activeDate = localDateString();
 let activePeriod = defaultPeriodForNow();
 let canEdit = false;
 let hasActiveRecord = false;
+let closingProduction = false;
 let historyRecords = { morning: null, afternoon: null };
+let historyRecordsDate = null;
 const periodVersions = new Map();
 let saveQueue = Promise.resolve(true);
 let periodStatusNotice = null;
@@ -50,6 +53,7 @@ const historyDateInput = byId("historyDate");
 const startPeriodInput = byId("startPeriod");
 const homeScreen = byId("homeScreen");
 const productionScreen = byId("productionScreen");
+const summaryScreen = byId("summaryScreen");
 const homeButton = byId("homeBtn");
 
 function escapeHTML(value) {
@@ -108,6 +112,12 @@ function updatePeriodHeading() {
   byId("selectedPeriodName").textContent =
     `${period.name} · ${period.hours} · ${formatDate(activeDate)}`;
   updatePeriodMessage();
+}
+
+function updateStartButtonLabel() {
+  const period = PERIODS[startPeriodInput.value] || PERIODS.morning;
+  byId("startProduction").textContent =
+    `▶ INICIAR PRODUÇÃO · ${period.name.toUpperCase()}`;
 }
 
 async function apiRequest(path, options = {}) {
@@ -277,7 +287,9 @@ async function importLegacyRecord() {
 }
 
 function displayHome() {
+  if (closingProduction) return;
   productionScreen.classList.add("hidden");
+  summaryScreen.classList.add("hidden");
   homeScreen.classList.remove("hidden");
   homeButton.classList.add("hidden");
   window.scrollTo({ top: 0, behavior: "auto" });
@@ -285,25 +297,34 @@ function displayHome() {
 
 function displayProduction() {
   homeScreen.classList.add("hidden");
+  summaryScreen.classList.add("hidden");
   productionScreen.classList.remove("hidden");
   homeButton.classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
-async function openHistoryFromHome() {
-  activeDate = localDateString();
+function displaySummary() {
+  homeScreen.classList.add("hidden");
+  productionScreen.classList.add("hidden");
+  summaryScreen.classList.remove("hidden");
+  homeButton.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+async function openHistoryFromHome(date = localDateString()) {
+  activeDate = date;
   activePeriod = startPeriodInput.value;
   canEdit = false;
   hasActiveRecord = false;
   d = emptyRecord();
   productInput.value = d.produto;
   goalInput.value = d.meta;
-  historyDateInput.value = activeDate;
+  historyDateInput.value = date;
   periodStatusNotice = null;
   updatePeriodHeading();
   render();
   displayProduction();
-  await loadHistoryDay(activeDate);
+  await loadHistoryDay(date);
 }
 
 async function initializeOnlineData() {
@@ -329,6 +350,7 @@ async function initializeOnlineData() {
 
 async function beginProduction() {
   if (!currentUserId) return;
+  const userId = currentUserId;
   const startButton = byId("startProduction");
   startButton.disabled = true;
   byId("startStatus").textContent = "Abrindo o período...";
@@ -344,11 +366,13 @@ async function beginProduction() {
         );
       }
     }
+    if (currentUserId !== userId) return;
     const date = localDateString();
     const period = startPeriodInput.value;
     let day = await apiRequest(
       `/api/records?date=${encodeURIComponent(date)}`,
     );
+    if (currentUserId !== userId) return;
     const versionKey = `${currentUserId}:${date}:${period}`;
     let entry = day.periods[period];
     let record = entry?.payload || null;
@@ -360,6 +384,7 @@ async function beginProduction() {
         method: "POST",
         body: JSON.stringify(fresh),
       });
+      if (currentUserId !== userId) return;
       if (inserted.created) {
         record = fresh;
         if (inserted.updatedAt) {
@@ -369,6 +394,7 @@ async function beginProduction() {
         day = await apiRequest(
           `/api/records?date=${encodeURIComponent(date)}`,
         );
+        if (currentUserId !== userId) return;
         entry = day.periods[period];
         record = entry?.payload || null;
         if (entry?.updatedAt) {
@@ -382,11 +408,21 @@ async function beginProduction() {
 
     activeDate = date;
     activePeriod = period;
-    canEdit = true;
-    hasActiveRecord = true;
     d = copyRecord(record);
     productInput.value = d.produto;
     goalInput.value = d.meta;
+    if (record.encerramento != null) {
+      canEdit = false;
+      hasActiveRecord = true;
+      await loadHistoryDay(date);
+      renderSummaryScreen(date, period, d);
+      displaySummary();
+      return;
+    }
+
+    canEdit = true;
+    hasActiveRecord = true;
+    closingProduction = false;
     byId("startStatus").textContent = migrationNotice;
     updatePeriodHeading();
     render();
@@ -401,7 +437,65 @@ async function beginProduction() {
   }
 }
 
+async function closeProduction() {
+  if (!canEdit || !hasActiveRecord) return;
+  if (d.ativa) {
+    window.alert("Retome a produção antes de encerrar este período.");
+    return;
+  }
+  if (
+    !window.confirm(
+      "Encerrar a produção deste período? O registro ficará disponível para consulta.",
+    )
+  ) {
+    return;
+  }
+
+  const userId = currentUserId;
+  const closeButton = byId("closeProductionBtn");
+  closingProduction = true;
+  closeButton.disabled = true;
+  homeButton.disabled = true;
+  setPeriodMessage("Salvando o encerramento do período...");
+  render();
+
+  try {
+    const previousSaveSucceeded = await saveQueue;
+    if (currentUserId !== userId) return;
+    if (!previousSaveSucceeded) {
+      if (!canEdit) return;
+      const retried = await save();
+      if (!retried) return;
+    }
+    if (!canEdit) return;
+
+    const previousRecord = copyRecord(d);
+    d.encerramento = Date.now();
+    render();
+    const saved = await save();
+    if (currentUserId !== userId) return;
+    if (!saved) {
+      d = previousRecord;
+      render();
+      return;
+    }
+
+    canEdit = false;
+    closingProduction = false;
+    await loadHistoryDay(activeDate);
+    if (currentUserId !== userId) return;
+    renderSummaryScreen(activeDate, activePeriod, d);
+    displaySummary();
+  } finally {
+    closingProduction = false;
+    closeButton.disabled = false;
+    homeButton.disabled = false;
+    render();
+  }
+}
+
 async function loadHistoryDay(date) {
+  if (closingProduction) return;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
     byId("historyStatus").textContent = "Escolha uma data válida.";
     byId("exportDayBtn").disabled = true;
@@ -415,6 +509,7 @@ async function loadHistoryDay(date) {
       `/api/records?date=${encodeURIComponent(date)}`,
     );
     historyRecords = result.periods || { morning: null, afternoon: null };
+    historyRecordsDate = date;
     for (const period of ["morning", "afternoon"]) {
       const entry = historyRecords[period];
       const key = `${currentUserId}:${date}:${period}`;
@@ -473,7 +568,9 @@ function renderHistory(date) {
             record
               ? `<p><strong>${record.paletes.length.toLocaleString("pt-BR")}</strong> paletes</p>
                  <p><strong>${blocks === null ? "—" : blocks.toLocaleString("pt-BR")}</strong> blocos</p>
-                 <p>${escapeHTML(record.produto)}</p>`
+                 <p>${escapeHTML(record.produto)}</p>
+                 <p>Início: ${formatClock(record.inicio)}</p>
+                 <p>Encerramento: ${record.encerramento == null ? "Em andamento" : formatClock(record.encerramento)}</p>`
               : '<p>Sem registro neste período.</p>'
           }
           <button class="small" type="button" data-open-period="${period}" ${record ? "" : "disabled"}>Ver detalhes</button>
@@ -487,6 +584,11 @@ function renderHistory(date) {
         ? `<div class="day-total">Total do dia: <strong>${totalPallets.toLocaleString("pt-BR")} paletes</strong> · <strong>${allBlockCountsKnown ? totalBlocks.toLocaleString("pt-BR") : "—"} blocos</strong></div>`
         : ""
     }
+    ${
+      available.length
+        ? '<div class="lunch-break">🍽️ Almoço · 12:00–13:00 · intervalo entre períodos, fora do tempo parado da produção.</div>'
+        : ""
+    }
     <div class="history-summary">${periodsMarkup}</div>`;
   byId("historyStatus").textContent = available.length
     ? `Registros de ${formatDate(date)}.`
@@ -495,7 +597,57 @@ function renderHistory(date) {
   byId("exportDayBtn").disabled = available.length === 0;
 }
 
+function renderSummaryScreen(date, period, record) {
+  const historyMatchesDate = historyRecordsDate === date;
+  const records = {
+    morning: historyMatchesDate
+      ? historyRecords.morning?.payload || null
+      : null,
+    afternoon: historyMatchesDate
+      ? historyRecords.afternoon?.payload || null
+      : null,
+  };
+  records[period] = record;
+  const available = Object.values(records).filter(Boolean);
+  const totalPallets = available.reduce(
+    (sum, item) => sum + item.paletes.length,
+    0,
+  );
+  const blocksKnown = available.every((item) => blockCount(item) !== null);
+  const totalBlocks = available.reduce(
+    (sum, item) => sum + (blockCount(item) || 0),
+    0,
+  );
+  const periodInfo = PERIODS[period];
+  const periodBlocks = blockCount(record);
+
+  byId("summaryPeriod").textContent =
+    `${periodInfo.name} · ${periodInfo.hours}`;
+  byId("summaryDate").textContent = `Data: ${formatDate(date)}`;
+  byId("summaryPallets").textContent =
+    record.paletes.length.toLocaleString("pt-BR");
+  byId("summaryBlocks").textContent =
+    periodBlocks === null ? "—" : periodBlocks.toLocaleString("pt-BR");
+  byId("summaryStartTime").textContent = formatClock(record.inicio);
+  byId("summaryEndTime").textContent =
+    record.encerramento == null ? "Em andamento" : formatClock(record.encerramento);
+  byId("summaryDayPallets").textContent =
+    totalPallets.toLocaleString("pt-BR");
+  byId("summaryDayBlocks").textContent = blocksKnown
+    ? totalBlocks.toLocaleString("pt-BR")
+    : "—";
+  byId("summaryDayPeriods").textContent = ["morning", "afternoon"]
+    .filter((key) => records[key])
+    .map((key) => {
+      const item = records[key];
+      return `${PERIODS[key].name}: ${formatClock(item.inicio)}–${item.encerramento == null ? "em andamento" : formatClock(item.encerramento)}`;
+    })
+    .join(" · ");
+  byId("summaryLunch").hidden = available.length === 0;
+}
+
 async function openHistoricalPeriod(date, period) {
+  if (closingProduction) return;
   if (canEdit && hasActiveRecord) {
     let saved = await saveQueue;
     if (!saved) saved = await save();
@@ -507,10 +659,17 @@ async function openHistoricalPeriod(date, period) {
   activePeriod = period;
   canEdit = false;
   hasActiveRecord = true;
+  closingProduction = false;
   d = copyRecord(record);
   productInput.value = d.produto;
   goalInput.value = d.meta;
   periodStatusNotice = null;
+  if (record.encerramento != null) {
+    await loadHistoryDay(date);
+    renderSummaryScreen(date, period, d);
+    displaySummary();
+    return;
+  }
   updatePeriodHeading();
   render();
   displayProduction();
@@ -552,7 +711,7 @@ function render() {
   byId("progressText").textContent = `${progress.toFixed(0)}% da meta`;
 
   const status = byId("status");
-  const canChangeRecord = canEdit && hasActiveRecord;
+  const canChangeRecord = canEdit && hasActiveRecord && !closingProduction;
   const readOnlyNote = byId("readonlyNote");
   productInput.disabled = !canChangeRecord;
   goalInput.disabled = !canChangeRecord;
@@ -565,11 +724,20 @@ function render() {
     "hidden",
     !canChangeRecord || !d.ativa,
   );
+  const closeButton = byId("closeProductionBtn");
+  closeButton.classList.toggle(
+    "hidden",
+    !canChangeRecord || d.encerramento != null,
+  );
+  closeButton.disabled = Boolean(d.ativa) || closingProduction;
   readOnlyNote.classList.toggle("hidden", canChangeRecord || !hasActiveRecord);
 
   if (!hasActiveRecord) {
     status.className = "status paused";
     status.textContent = "⚪ NENHUM PERÍODO ABERTO";
+  } else if (closingProduction) {
+    status.className = "status paused";
+    status.textContent = "⏳ ENCERRANDO PRODUÇÃO";
   } else if (!canChangeRecord) {
     status.className = "status paused";
     status.textContent = "🔎 CONSULTA DO HISTÓRICO";
@@ -633,6 +801,13 @@ function appendRecordRows(rows, record, period) {
     [`PERÍODO ${PERIODS[period].name.toUpperCase()}`, PERIODS[period].hours],
     ["Produto", record.produto],
     ["Meta", record.meta],
+    ["Início da produção", formatClock(record.inicio)],
+    [
+      "Encerramento",
+      record.encerramento == null
+        ? "Em andamento"
+        : formatClock(record.encerramento),
+    ],
     ["Paletes", record.paletes.length],
     [],
     ["PALETES", "Horário", "Intervalo"],
@@ -727,9 +902,11 @@ function clearForSignedOut() {
   currentUserId = null;
   canEdit = false;
   hasActiveRecord = false;
+  closingProduction = false;
   d = emptyRecord();
   periodStatusNotice = null;
   historyRecords = { morning: null, afternoon: null };
+  historyRecordsDate = null;
   periodVersions.clear();
   byId("daySummary").replaceChildren();
   byId("historyStatus").textContent = "Entre para consultar os registros.";
@@ -739,6 +916,8 @@ function clearForSignedOut() {
 }
 
 byId("startPeriod").value = defaultPeriodForNow();
+updateStartButtonLabel();
+startPeriodInput.addEventListener("change", updateStartButtonLabel);
 historyDateInput.value = localDateString();
 productInput.value = d.produto;
 goalInput.value = d.meta;
@@ -761,6 +940,12 @@ byId("stopBtn").addEventListener("click", () => {
 byId("cancelModalBtn").addEventListener("click", closeStopModal);
 byId("confirmStopBtn").addEventListener("click", confirmStop);
 byId("resumeBtn").addEventListener("click", resumeProduction);
+byId("closeProductionBtn").addEventListener("click", () =>
+  void closeProduction(),
+);
+byId("summaryHistoryBtn").addEventListener("click", () =>
+  void openHistoryFromHome(activeDate),
+);
 productInput.addEventListener("change", () => {
   if (!canEdit || !hasActiveRecord) return;
   d.produto = productInput.value;
